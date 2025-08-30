@@ -1,4 +1,4 @@
-name: Terraform Destroy on PR Merge
+name: Terraform Destroy on PR Merged
 
 on:
   pull_request:
