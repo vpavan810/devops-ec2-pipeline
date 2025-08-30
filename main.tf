@@ -13,7 +13,8 @@ resource "aws_ecs_task_definition" "app_task" {
   cpu                     = "256"
   memory                  = "512"
   execution_role_arn      = var.execution_role_arn
-  container_definitions   = jsonencode([
+
+  container_definitions = jsonencode([
     {
       name      = "devops-app"
       image     = var.container_image
@@ -21,7 +22,6 @@ resource "aws_ecs_task_definition" "app_task" {
       portMappings = [
         {
           containerPort = 80
-          
         }
       ]
     }
@@ -40,4 +40,9 @@ resource "aws_ecs_service" "app_service" {
     security_groups = [var.security_group_id]
     assign_public_ip = true
   }
+
+  depends_on = [
+    aws_ecs_cluster.devops_cluster,
+    aws_ecs_task_definition.app_task
+  ]
 }
