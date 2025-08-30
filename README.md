@@ -1,1 +1,0 @@
-# devops-ec2-pipeline
