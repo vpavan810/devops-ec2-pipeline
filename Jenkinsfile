@@ -2,7 +2,7 @@ pipeline {
   agent any
 
   parameters {
-    booleanParam(name: 'DESTROY_INFRA', defaultValue: false, description: 'Check to destroy infrastructure instead of deploying')
+    booleanParam(name: 'DESTROY_INFRASTRUCTURE', defaultValue: false, description: 'Check to destroy infrastructure instead of deploying')
   }
 
   environment {
