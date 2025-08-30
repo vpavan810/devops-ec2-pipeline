@@ -12,7 +12,7 @@ variable "container_image" {
 
 variable "subnet_ids" {
   type = list(string)
-  default = [ "subnet-09f026882a20e5555" ]
+  default = ["subnet-09f026882a20e5555"]
 }
 
 variable "security_group_id" {
