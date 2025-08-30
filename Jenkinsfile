@@ -1,9 +1,17 @@
 pipeline {
   agent any
+
+  parameters {
+    booleanParam(name: 'DESTROY_INFRA', defaultValue: false, description: 'Check to destroy infrastructure instead of deploying')
+  }
+
   environment {
-    AWS_REGION = 'ap-south-1'
-    ACCOUNT_ID = '<your_aws_account_id>'
-    BRANCH_NAME = "${env.GIT_BRANCH}"
+    AWS_REGION   = 'ap-south-1'
+    ACCOUNT_ID   = '<your_aws_account_id>'   // Replace with your actual AWS account ID
+    BRANCH_NAME  = "${env.BRANCH_NAME}"      // Works in multibranch pipelines
+    ECR_REPO     = 'my-app'
+    ECS_CLUSTER  = 'my-app'
+    ECS_SERVICE  = 'my-app'
   }
 
   stages {
@@ -16,64 +24,100 @@ pipeline {
     stage('Terraform Init') {
       steps {
         dir('terraform') {
-          sh 'terraform init'
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            sh 'terraform init'
+          }
         }
       }
     }
 
     stage('Terraform Plan (on PRs)') {
       when {
-        not {
-          branch 'main'
+        allOf {
+          not { branch 'main' }
+          expression { return !params.DESTROY_INFRA }
         }
       }
       steps {
         dir('terraform') {
-          sh 'terraform plan'
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            sh 'terraform plan'
+          }
         }
       }
     }
 
     stage('Terraform Apply (only on main)') {
       when {
-        branch 'main'
+        allOf {
+          branch 'main'
+          expression { return !params.DESTROY_INFRA }
+        }
       }
       steps {
         dir('terraform') {
-          sh 'terraform apply -auto-approve'
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            sh 'terraform apply -auto-approve'
+          }
+        }
+      }
+    }
+
+    stage('Terraform Destroy (manual trigger)') {
+      when {
+        expression { return params.DESTROY_INFRA }
+      }
+      steps {
+        dir('terraform') {
+          withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+            sh 'terraform destroy -auto-approve'
+          }
         }
       }
     }
 
     stage('Build Docker Image') {
+      when {
+        expression { return !params.DESTROY_INFRA }
+      }
       steps {
-        sh 'docker build -t my-app:latest ./app'
+        sh 'docker build -t $ECR_REPO:latest ./app'
       }
     }
 
     stage('Push to ECR') {
+      when {
+        expression { return !params.DESTROY_INFRA }
+      }
       steps {
-        sh '''
-          aws ecr get-login-password --region $AWS_REGION | \
-          docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          docker tag my-app:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/my-app:latest
-          docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/my-app:latest
-        '''
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          sh '''
+            aws ecr get-login-password --region $AWS_REGION | \
+            docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            docker tag $ECR_REPO:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:latest
+            docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:latest
+          '''
+        }
       }
     }
 
     stage('Deploy to ECS') {
       when {
-        branch 'main'
+        allOf {
+          branch 'main'
+          expression { return !params.DESTROY_INFRA }
+        }
       }
       steps {
-        sh '''
-          aws ecs update-service \
-            --cluster my-app \
-            --service my-app \
-            --force-new-deployment \
-            --region $AWS_REGION
-        '''
+        withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
+          sh '''
+            aws ecs update-service \
+              --cluster $ECS_CLUSTER \
+              --service $ECS_SERVICE \
+              --force-new-deployment \
+              --region $AWS_REGION
+          '''
+        }
       }
     }
   }
