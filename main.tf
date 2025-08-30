@@ -8,11 +8,11 @@ resource "aws_ecs_cluster" "devops_cluster" {
 
 resource "aws_ecs_task_definition" "app_task" {
   family                   = "devops-app-task"
-  network_mode            = "awsvpc"
+  network_mode             = "awsvpc"
   requires_compatibilities = ["FARGATE"]
-  cpu                     = "256"
-  memory                  = "512"
-  execution_role_arn      = var.execution_role_arn
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = var.execution_role_arn
 
   container_definitions = jsonencode([
     {
