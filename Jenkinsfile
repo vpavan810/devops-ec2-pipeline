@@ -2,14 +2,14 @@ pipeline {
   agent any
 
   parameters {
-    booleanParam(name: 'DESTROY_INFRASTRUCTURE', defaultValue: false, description: 'Check to destroy infrastructure instead of deploying')
+    booleanParam(name: 'DESTROY_INFRA', defaultValue: false, description: 'Check to destroy infrastructure instead of deploying')
   }
 
   environment {
     AWS_REGION   = 'ap-south-1'
-    ACCOUNT_ID   = '851725564646'   // Replace with your actual AWS account ID
+    ACCOUNT_ID   = '<your_aws_account_id>'   // Replace with your actual AWS account ID
     BRANCH_NAME  = "${env.BRANCH_NAME}"      // Works in multibranch pipelines
-    ECR_REPO     = 'my-app1'
+    ECR_REPO     = 'my-app'
     ECS_CLUSTER  = 'my-app'
     ECS_SERVICE  = 'my-app'
   }
@@ -25,7 +25,7 @@ pipeline {
       steps {
         dir('terraform') {
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-            sh 'terraform init'
+            bat 'terraform init'
           }
         }
       }
@@ -41,7 +41,7 @@ pipeline {
       steps {
         dir('terraform') {
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-            sh 'terraform plan'
+            bat 'terraform plan'
           }
         }
       }
@@ -57,7 +57,7 @@ pipeline {
       steps {
         dir('terraform') {
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-            sh 'terraform apply -auto-approve'
+            bat 'terraform apply -auto-approve'
           }
         }
       }
@@ -70,7 +70,7 @@ pipeline {
       steps {
         dir('terraform') {
           withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-            sh 'terraform destroy -auto-approve'
+            bat 'terraform destroy -auto-approve'
           }
         }
       }
@@ -81,7 +81,7 @@ pipeline {
         expression { return !params.DESTROY_INFRA }
       }
       steps {
-        sh 'docker build -t $ECR_REPO:latest ./app'
+        bat 'docker build -t %ECR_REPO%:latest ./app'
       }
     }
 
@@ -91,12 +91,11 @@ pipeline {
       }
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-          sh '''
-            aws ecr get-login-password --region $AWS_REGION | \
-            docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-            docker tag $ECR_REPO:latest $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:latest
-            docker push $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO:latest
-          '''
+          bat """
+            aws ecr get-login-password --region %AWS_REGION% | docker login --username AWS --password-stdin %ACCOUNT_ID%.dkr.ecr.%AWS_REGION%.amazonaws.com
+            docker tag %ECR_REPO%:latest %ACCOUNT_ID%.dkr.ecr.%AWS_REGION%.amazonaws.com/%ECR_REPO%:latest
+            docker push %ACCOUNT_ID%.dkr.ecr.%AWS_REGION%.amazonaws.com/%ECR_REPO%:latest
+          """
         }
       }
     }
@@ -110,13 +109,13 @@ pipeline {
       }
       steps {
         withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-creds']]) {
-          sh '''
-            aws ecs update-service \
-              --cluster $ECS_CLUSTER \
-              --service $ECS_SERVICE \
-              --force-new-deployment \
-              --region $AWS_REGION
-          '''
+          bat """
+            aws ecs update-service ^
+              --cluster %ECS_CLUSTER% ^
+              --service %ECS_SERVICE% ^
+              --force-new-deployment ^
+              --region %AWS_REGION%
+          """
         }
       }
     }
@@ -124,18 +123,18 @@ pipeline {
 
   post {
     success {
-      sh '''
-        curl -X POST -H 'Content-type: application/json' \
-        --data '{"text":"✅ Jenkins pipeline succeeded for branch: $BRANCH_NAME"}' \
+      bat """
+        curl -X POST -H "Content-type: application/json" ^
+        --data "{\\"text\\":\\"✅ Jenkins pipeline succeeded for branch: %BRANCH_NAME%\\"}" ^
         https://hooks.slack.com/services/your/webhook/url
-      '''
+      """
     }
     failure {
-      sh '''
-        curl -X POST -H 'Content-type: application/json' \
-        --data '{"text":"❌ Jenkins pipeline failed for branch: $BRANCH_NAME"}' \
+      bat """
+        curl -X POST -H "Content-type: application/json" ^
+        --data "{\\"text\\":\\"❌ Jenkins pipeline failed for branch: %BRANCH_NAME%\\"}" ^
         https://hooks.slack.com/services/your/webhook/url
-      '''
+      """
     }
   }
 }
