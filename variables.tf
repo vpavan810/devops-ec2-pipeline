@@ -3,7 +3,7 @@ variable "aws_region" {
 }
 
 variable "execution_role_arn" {
-  description = "arn:aws:iam::851725564646:role/ecstask"
+  default = "arn:aws:iam::851725564646:role/ecstask"
 }
 
 variable "container_image" {
