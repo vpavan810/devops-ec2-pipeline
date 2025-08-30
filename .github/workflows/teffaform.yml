@@ -1,16 +1,12 @@
-name: Terraform EC2 Deployment
+name: Terraform Destroy on PR Merge to Main
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
+    types: [closed]
 
 jobs:
-  terraform:
-    name: Terraform Apply
+  destroy:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
 
     env:
@@ -26,18 +22,8 @@ jobs:
       with:
         terraform_version: 1.6.0
 
-    - name: 🧪 Terraform Format Check
-      run: terraform fmt -check
-
     - name: 🔍 Terraform Init
       run: terraform init
 
-    - name: 📋 Terraform Validate
-      run: terraform validate
-
-    - name: 📐 Terraform Plan
-      run: terraform plan
-
-    - name: 🚀 Terraform Apply
-      if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-      run: terraform apply -auto-approve
+    - name: 💣 Terraform Destroy
+      run: terraform destroy -auto-approve
