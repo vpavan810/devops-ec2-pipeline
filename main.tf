@@ -2,7 +2,7 @@ provider "aws" {
   region = var.aws_region
 }
 
-resource "aws_ecs_cluster" "devops_cluster" {
+#resource "aws_ecs_cluster" "devops_cluster" {
   name = "devops-ecs-cluster"
 }
 
@@ -45,4 +45,4 @@ resource "aws_ecs_service" "app_service" {
     aws_ecs_cluster.devops_cluster,
     aws_ecs_task_definition.app_task
   ]
-}
+} #
