@@ -7,7 +7,7 @@ pipeline {
 
   environment {
     AWS_REGION   = 'ap-south-1'
-    ACCOUNT_ID   = '<your_aws_account_id>'   // Replace with your actual AWS account ID
+    ACCOUNT_ID   = '851725564646'   // Replace with your actual AWS account ID
     BRANCH_NAME  = "${env.BRANCH_NAME}"      // Works in multibranch pipelines
     ECR_REPO     = 'my-app'
     ECS_CLUSTER  = 'my-app'
